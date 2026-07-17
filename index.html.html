@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournoi Solidarité — 2ème Édition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- SDKs Firebase (Version Compatibilité CDN — Firestore branché) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #070709;
+            --card-bg: #0f0f12;
+            --card-border: #1f1f26;
+            --primary: #ff5500;
+            --primary-glow: rgba(255, 85, 0, 0.4);
+            --secondary: #ffaa00;
+            --secondary-glow: rgba(255, 170, 0, 0.3);
+            --text-light: #f4f4f7;
+            --text-muted: #888893;
+            --success: #00cc66;
+            --danger: #ff3333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animations globales */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 10px rgba(255, 85, 0, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(255, 85, 0, 0.5); }
+            100% { box-shadow: 0 0 10px rgba(255, 85, 0, 0.2); }
+        }
+
+        /* Navigation */
+        header {
+            background-color: rgba(7, 7, 9, 0.95);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 1.1rem;
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -1px;
+        }
+
+        .logo span {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+
+        .burger-menu {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .burger-menu span {
+            width: 25px;
+            height: 3px;
+            background-color: var(--text-light);
+            border-radius: 3px;
+        }
+
+        /* Hero Banner */
+        .hero {
+            position: relative;
+            background: linear-gradient(rgba(7, 7, 9, 0.6), rgba(7, 7, 9, 0.95)), 
+                        url('https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1920&auto=format&fit=crop') no-repeat center center/cover;
+            text-align: center;
+            padding: 8rem 2rem 5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .edition-badge {
+            background-color: rgba(255, 170, 0, 0.15);
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            letter-spacing: 1px;
+        }
+
+        .hero h1 {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            letter-spacing: -2px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            line-height: 1.1;
+        }
+
+        .hero h1 span {
+            color: var(--primary);
+            text-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .hero p {
+            color: var(--text-light);
+            font-size: 1.3rem;
+            max-width: 700px;
+            margin: 0 auto 2.5rem;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        /* Conteneur principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* Titres de section */
+        h2 {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+            color: #fff;
+            letter-spacing: -1px;
+        }
+
+        /* Grilles & Cartes */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.8rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.8rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 85, 0, 0.3);
+        }
+
+        /* Chiffres Clés */
+        .stats-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+            text-align: center;
+        }
+
+        .stat-item {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 1.5rem;
+            border-radius: 12px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            font-family: 'Syncopate', sans-serif;
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        /* Match En Direct */
+        .live-card {
+            background: linear-gradient(135deg, #141419 0%, #0c0c0e 100%);
+            border: 2px solid var(--primary);
+            animation: pulseGlow 3s infinite;
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: var(--danger);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .live-score-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 2.5rem 0 1.5rem;
+        }
+
+        .live-team {
+            flex: 1;
+            text-align: center;
+        }
+
+        .live-team h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .live-score {
+            font-size: 4.5rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .live-divider {
+            font-size: 2rem;
+            color: var(--text-muted);
+            font-weight: bold;
+        }
+
+        .live-timer {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--primary);
+            background: rgba(255, 85, 0, 0.1);
+            padding: 8px 20px;
+            border-radius: 50px;
+            display: inline-block;
+            margin: 0 auto;
+            font-family: monospace;
+            border: 1px solid rgba(255, 85, 0, 0.2);
+        }
+
+        /* Présentation de la Cause */
+        .story-block {
+            display: flex;
+            gap: 3rem;
+            align-items: center;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 3rem;
+            margin: 4rem 0;
+        }
+
+        .story-content {
+            flex: 1.2;
+        }
+
+        .story-content h3 {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 1.5rem;
+            color: var(--secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .story-content p {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .story-image {
+            flex: 0.8;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+        }
+
+        .story-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s;
+        }
+
+        .story-image:hover img {
+            transform: scale(1.05);
+        }
+
+        /* Galerie Photos */
+        .photo-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2rem;
+            margin-bottom: 4rem;
+        }
+
+        .gallery-item {
+            position: relative;
+            height: 250px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        /* Section Tarifs Inscriptions */
+        .pricing-section {
+            margin-bottom: 3rem;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.8rem;
+            margin-bottom: 3rem;
+        }
+
+        .pricing-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            position: relative;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+
+        .pricing-card.popular {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(255, 85, 0, 0.1);
+        }
+
+        .pricing-card.popular::before {
+            content: "Recommandé";
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--primary);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 3px 12px;
+            border-radius: 50px;
+            text-transform: uppercase;
+        }
+
+        .pricing-title {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .pricing-price {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .pricing-price span {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .pricing-features li {
+            padding: 8px 0;
+            color: var(--text-light);
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pricing-features li::before {
+            content: "✓";
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* Formulaire d'inscription */
+        .registration-form-container {
+            background-color: #0d0d10;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 3rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Classement Tableau */
+        .table-responsive {
+            overflow-x: auto;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        th {
+            background-color: rgba(255,255,255,0.02);
+            color: var(--text-muted);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        /* Boutons */
+        button {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 0.9rem 1.8rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #e04b00;
+            transform: translateY(-2px);
+        }
+
+        button.btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--card-border);
+            color: var(--text-light);
+        }
+
+        button.btn-secondary:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        button.btn-danger {
+            background-color: var(--danger);
+        }
+
+        button.btn-danger:hover {
+            background-color: #cc2424;
+        }
+
+        /* Formulaire de saisie */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            background-color: #08080a;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+        }
+
+        /* ARBITRAGE : EXCELLENT CADRAGE DU PANNEAU */
+        .scoreboard-panel {
+            background-color: #08080a;
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .scoreboard-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 2rem;
+            align-items: stretch;
+            margin-top: 1.5rem;
+        }
+
+        .scoreboard-team-card {
+            background-color: #0f0f12;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.8rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .scoreboard-center-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 180px;
+            background-color: rgba(255,255,255,0.01);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .adjuster-btn-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .adjuster-btn-grid button {
+            padding: 0.6rem;
+            font-size: 0.9rem;
+        }
+
+        .minus-btn {
+            grid-column: span 3;
+            background-color: var(--card-border);
+            color: var(--text-muted);
+        }
+
+        .minus-btn:hover {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .timer-manager {
+            text-align: center;
+            width: 100%;
+        }
+
+        .timer-manager span {
+            font-size: 2.8rem;
+            font-family: monospace;
+            font-weight: bold;
+            display: block;
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+            margin-bottom: 10px;
+        }
+
+        .list-items {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .list-items li {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--card-border);
+            padding: 0.9rem 1.2rem;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #040405;
+            border-top: 1px solid var(--card-border);
+            padding: 4rem 2rem 2rem;
+            margin-top: 5rem;
+            color: var(--text-muted);
+        }
+
+        .footer-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-col h4 {
+            color: white;
+            font-family: 'Syncopate', sans-serif;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: 1px;
+        }
+
+        .footer-col p {
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+
+        .footer-col ul {
+            list-style: none;
+        }
+
+        .footer-col ul li {
+            margin-bottom: 10px;
+        }
+
+        .footer-col ul li a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .footer-col ul li a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 2rem;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        /* Mobile adaptation */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background-color: var(--bg-dark);
+                border-bottom: 1px solid var(--card-border);
+                padding: 1rem;
+                gap: 1rem;
+            }
+            .nav-links.mobile-open {
+                display: flex;
+            }
+            .burger-menu {
+                display: flex;
+            }
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+            .stats-strip {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .story-block {
+                flex-direction: column;
+                padding: 1.5rem;
+            }
+            .photo-gallery {
+                grid-template-columns: 1fr;
+            }
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            /* Cadrage adaptatif du panneau sur mobile */
+            .scoreboard-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .scoreboard-center-card {
+                order: -1; /* Placer le timer tout en haut sur mobile */
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="navbar">
+            <a href="#" class="logo" onclick="switchTab('home')">
+                🏀 SOLIDARITÉ <span>Cup</span>
+            </a>
+            <div class="burger-menu" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="nav-links" id="nav-links">
+                <a onclick="switchTab('home')" class="active" id="link-home">Accueil</a>
+                <a onclick="switchTab('register')" id="link-register">S'inscrire</a>
+                <a onclick="switchTab('schedule')" id="link-schedule">Matchs</a>
+                <a onclick="switchTab('standings')" id="link-standings">Classement</a>
+                <a onclick="switchTab('admin')" id="link-admin">Espace Arbitre</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero d'accueil -->
+    <div class="hero">
+        <span class="edition-badge">★ Deuxième Édition ★</span>
+        <h1>TOURNOI SOLIDARITÉ <span>2026</span></h1>
+        <p>Le basketball au service du partage. Rejoignez l'élite sportive et soutenez un projet d'insertion par le sport.</p>
+        <div class="hero-buttons">
+            <button onclick="switchTab('register')">S'inscrire Maintenant</button>
+            <button class="btn-secondary" onclick="switchTab('schedule')">Voir les Matchs</button>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- ================= SECTION ACCUEIL ================= -->
+        <div id="section-home" class="section active">
+            
+            <!-- Chiffres Clés -->
+            <div class="stats-strip">
+                <div class="stat-item">
+                    <div class="stat-number">5</div>
+                    <div class="stat-label">Équipes Engagées</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">8</div>
+                    <div class="stat-label">Jours d'Événement</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Dons Reversés</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">Trophée Ultime Hommes et Femmes </div>
+                </div>
+            </div>
+
+            <!-- Match en Direct -->
+            <h2>Match En Direct</h2>
+            <div id="live-match-placeholder" class="card">
+                <p style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">Aucun match en direct actuellement. Les arbitres lanceront le jeu sous peu.</p>
+            </div>
+            <div id="live-match-display" class="card live-card" style="display: none;">
+                <div class="live-badge">Live</div>
+                <div class="live-score-container">
+                    <div class="live-team">
+                        <h3 id="live-display-team1">Équipe A</h3>
+                    </div>
+                    <div class="live-score" id="live-display-score1">0</div>
+                    <div class="live-divider">-</div>
+                    <div class="live-score" id="live-display-score2">0</div>
+                    <div class="live-team">
+                        <h3 id="live-display-team2">Équipe B</h3>
+                    </div>
+                </div>
+                <div class="center-wrapper" style="text-align: center;">
+                    <div class="live-timer" id="live-display-timer">10:00</div>
+                </div>
+            </div>
+
+            <!-- Bloc Explicatif de la Cause -->
+            <div class="story-block">
+                <div class="story-content">
+                    <h3>Pourquoi jouons-nous ?</h3>
+                    <p>Le <strong>Tournoi Solidarité</strong> est né de la volonté d'associer la ferveur du basketball de rue à un impact concret. Pour cette deuxième édition de 2026, l'ensemble des bénéfices (buvettes, inscriptions) seront reversés pour des causes sociales.</p>
+                    <p><strong>En foulant le parquet, chaque joueur contribue activement à l'insertion sociale par le sport.</strong></p>
+                </div>
+                <div class="story-image">
+                    <img src="https://images.unsplash.com/photo-1505666287802-931dc83948e9?q=80&w=800" alt="Terrain de basketball">
+                </div>
+            </div>
+
+            <!-- Galerie Photo -->
+            <h2>Aperçu du Terrain</h2>
+            <div class="photo-gallery">
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=600" alt="Dunk Match">
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1519766304817-4f37bda74a27?q=80&w=600" alt="Ballon et Filet">
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=600" alt="Échauffement">
+                </div>
+            </div>
+
+            <!-- Derniers Résultats -->
+            <h2>Derniers Résultats</h2>
+            <div class="grid" id="recent-results-grid">
+                <!-- Rempli en JS -->
+            </div>
+
+        </div>
+
+        <!-- ================= SECTION INSCRIPTIONS ================= -->
+        <div id="section-register" class="section">
+            <h2>Tarifs & Inscriptions</h2>
+            <div class="pricing-section">
+                <div class="pricing-grid">
+                    <!-- Tarif Homme -->
+                    <div class="pricing-card popular">
+                        <div class="pricing-title">Tournoi Masculin</div>
+                        <div class="pricing-price">100 000 FCFA <span>/ Équipe</span></div>
+                        <ul class="pricing-features">
+                            <li>Jusqu'à 10 joueurs inscrits</li>
+                            <li>Publication officielles </li>
+                            <li>Rations d'eau / Boissons sportives</li>
+                            <li>Éligibilité dotation finale (Équipe Victorieuse)</li>
+                        </ul>
+                    </div>
+                    <!-- Tarif Femme -->
+                    <div class="pricing-card">
+                        <div class="pricing-title">Tournoi Féminin</div>
+                        <div class="pricing-price">75 000 FCFA <span>/ Équipe</span></div>
+                        <ul class="pricing-features">
+                            <li>Jusqu'à 10 joueuses inscrites</li>
+                            <li>Chasubles officielles fournies</li>
+                            <li>Rations d'eau / Boissons sportives</li>
+                            <li>Éligibilité dotation finale (Équipe Victorieuse)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="registration-form-container">
+                    <h3 style="margin-bottom: 1.5rem; text-align: center; font-family: 'Syncopate', sans-serif; font-size: 1.2rem;">Formulaire d'Inscription Officiel</h3>
+                    <form id="team-registration-form" onsubmit="handleRegistration(event)">
+                        <div class="form-group">
+                            <label for="reg-team-name">Nom de votre équipe *</label>
+                            <input type="text" id="reg-team-name" required placeholder="Ex: All Stars Cotonou">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-category">Catégorie *</label>
+                            <select id="reg-category" required>
+                                <option value="Masculin">Tournoi Masculin (100 000 FCFA)</option>
+                                <option value="Féminin">Tournoi Féminin (75 000 FCFA)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-captain">Responsable d'équipe / Capitaine *</label>
+                            <input type="text" id="reg-captain" required placeholder="Prénom et Nom">
+                        </div>
+                        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
+                            <div class="form-group">
+                                <label for="reg-email">Courriel de contact *</label>
+                                <input type="email" id="reg-email" required placeholder="adresse@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-phone">Numéro de Téléphone *</label>
+                                <input type="tel" id="reg-phone" required placeholder="06 12 34 56 78">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-notes">Détail des joueurs / Notes complémentaires</label>
+                            <textarea id="reg-notes" rows="3" placeholder="Noms des joueurs, tailles de maillots ou besoins spécifiques..."></textarea>
+                        </div>
+                        <button type="submit" style="width: 100%; font-size: 1.1rem; padding: 1rem;">Envoyer l'inscription & Ouvrir WhatsApp</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SECTION CALENDRIER ================= -->
+        <div id="section-schedule" class="section">
+            <h2>Calendrier & Résultats</h2>
+            <div id="schedule-placeholder" style="color: var(--text-muted); text-align: center; margin-top: 2rem; display: none;">
+                Aucun match planifié ou joué pour le moment.
+            </div>
+            <div class="grid" id="full-schedule-grid">
+                <!-- Rempli en JS -->
+            </div>
+        </div>
+
+        <!-- ================= SECTION CLASSEMENT ================= -->
+        <div id="section-standings" class="section">
+            <h2>Classement Officiel (FIBA)</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rang</th>
+                            <th>Équipe</th>
+                            <th style="text-align: center;">M</th>
+                            <th style="text-align: center;">V</th>
+                            <th style="text-align: center;">D</th>
+                            <th style="text-align: center;">PM</th>
+                            <th style="text-align: center;">PE</th>
+                            <th style="text-align: center;">Diff</th>
+                            <th style="text-align: center; color: var(--primary);">Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standings-table-body">
+                        <!-- Rempli en JS -->
+                    </tbody>
+                </table>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                * Règle de points FIBA : Victoire = 2 pts, Défaite = 1 pt. Le départage s'effectue à la différence de buts (Diff).
+            </p>
+        </div>
+
+        <!-- ================= SECTION ADMIN DYNAMIQUE ET SÉCURISÉE ================= -->
+        <div id="section-admin" class="section">
+            <div id="admin-security-wrapper">
+                <!-- Tout le contenu d'administration est injecté ici de manière dynamique pour bloquer l'inspection de code -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ================= PIED DE PAGE ================= -->
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4 style="color: var(--primary);">SOLIDARITÉ 2026</h4>
+                <p>2ème Édition du grand rassemblement de basketball solidaire. Ensemble, offrons un avenir sportif aux jeunes en difficulté.</p>
+                <p style="margin-top: 15px; font-size: 0.85rem;">Association Loi 1901 à but non lucratif.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Plan du Site</h4>
+                <ul>
+                    <li><a onclick="switchTab('home')">Accueil</a></li>
+                    <li><a onclick="switchTab('register')">S'inscrire</a></li>
+                    <li><a onclick="switchTab('schedule')">Matchs & Calendrier</a></li>
+                    <li><a onclick="switchTab('standings')">Classement</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Tarifs & Accès</h4>
+                <ul>
+                    <li>Tournoi Hommes : 100 000 FCFA</li>
+                    <li>Tournoi Femmes : 75 000 FCFA</li>
+                    <li>Spectateur : 200f</li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact & Infos</h4>
+                <p>📍 Stadium Terrain Énergie Gbegamey/cotonou</p>
+                <p>✉️ contact@solidaritebasket.org</p>
+                <p>📞 01 96 25 78 10</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Tournoi Solidarité. Tous droits réservés.</p>
+            <p>Fait avec passion pour le basketball et la jeunesse.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- TEMPLATES HTML DE L'ESPACE SÉCURISÉ ---
+        // (Déclarés AVANT l'initialisation Firebase pour éviter toute erreur
+        //  "Cannot access before initialization" si Firebase ne charge pas.)
+
+        // Écran de Connexion Unique
+        const ADMIN_LOGIN_HTML = `
+            <div class="card" style="max-width: 480px; margin: 4rem auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+                <h3 style="margin-bottom: 1rem; text-align: center; color: #fff;">🔒 Connexion Équipe Arbitrale</h3>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem; text-align: center;">
+                    Saisissez vos identifiants uniques pour accéder à la console d'arbitrage.
+                </p>
+                <div class="form-group">
+                    <label for="admin-username">Identifiant (Nom d'utilisateur)</label>
+                    <input type="text" id="admin-username" placeholder="Identifiant unique">
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">Mot de passe</label>
+                    <input type="password" id="admin-password" placeholder="Mot de passe">
+                </div>
+                <button onclick="handleAdminLogin()" style="width: 100%;">Déverrouiller la console</button>
+                <p id="auth-error" style="color: var(--danger); text-align: center; margin-top: 10px; display: none; font-size: 0.9rem;">
+                    Identifiant ou mot de passe incorrect.
+                </p>
+            </div>
+        `;
+
+        // Console d'Administration complète
+        const ADMIN_DASHBOARD_HTML = `
+            <div id="admin-dashboard" style="animation: fadeIn 0.4s ease-out forwards;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2>Console d'Administration</h2>
+                    <button class="btn-secondary" onclick="logoutAdmin()">Fermer la Session</button>
+                </div>
+
+                <div class="grid">
+                    <!-- Équipes -->
+                    <div class="card">
+                        <h3>Équipes Participantes</h3>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="new-team-name">Ajouter une équipe manuellement</label>
+                            <input type="text" id="new-team-name" placeholder="Ex: Guerriers du Port">
+                        </div>
+                        <button onclick="addTeam()" style="width: 100%;">Créer l'équipe</button>
+
+                        <h4 style="margin-top: 1.5rem; color: var(--text-muted);">Équipes enregistrées :</h4>
+                        <ul class="list-items" id="admin-teams-list"></ul>
+                    </div>
+
+                    <!-- Inscriptions Reçues -->
+                    <div class="card">
+                        <h3>Demandes d'inscription</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Inscriptions reçues par le formulaire en ligne.</p>
+                        <ul class="list-items" id="admin-registrations-list"></ul>
+                    </div>
+
+                    <!-- Planification avec Dates -->
+                    <div class="card">
+                        <h3>Planifier un Match</h3>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="schedule-team1">Équipe Domicile</label>
+                            <select id="schedule-team1"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="schedule-team2">Équipe Extérieur</label>
+                            <select id="schedule-team2"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="schedule-date">Date & Heure du Match *</label>
+                            <input type="datetime-local" id="schedule-date" required>
+                        </div>
+                        <button onclick="scheduleMatch()" style="width: 100%;">Créer le match</button>
+
+                        <h4 style="margin-top: 1.5rem; color: var(--text-muted);">Matchs programmés :</h4>
+                        <ul class="list-items" id="admin-scheduled-list"></ul>
+                    </div>
+                </div>
+
+                <!-- ARBITRAGE : CADRAGE PARFAIT DU PANNEAU DE MARQUE -->
+                <div class="card" style="border: 2px solid var(--primary); margin-top: 2rem;">
+                    <h3>Console d'Arbitrage - Direct Match</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                        Sélectionnez un match programmé pour lancer le décompte des points et l'affichage en direct.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="active-match-select">Sélectionner le match à lancer :</label>
+                        <select id="active-match-select"></select>
+                    </div>
+                    <button id="btn-launch-live" onclick="launchLiveMatch()" style="width: 100%;">Ouvrir le Panneau de Marque</button>
+
+                    <!-- Panneau de Marque Parfaitement Cadré -->
+                    <div class="scoreboard-panel" id="scoreboard-panel" style="display: none;">
+                        <div class="scoreboard-grid">
+                            
+                            <!-- Équipe Gauche (Domicile) -->
+                            <div class="scoreboard-team-card">
+                                <h4 id="score-team1-name" style="font-size: 1.2rem; color: var(--primary); font-family: 'Syncopate', sans-serif;">Équipe A</h4>
+                                <div id="score-team1-val" style="font-size: 4.5rem; font-weight: bold; margin: 15px 0; font-family: monospace;">0</div>
+                                <div class="adjuster-btn-grid">
+                                    <button onclick="adjustScore(1, 1)">+1</button>
+                                    <button onclick="adjustScore(1, 2)">+2</button>
+                                    <button onclick="adjustScore(1, 3)">+3</button>
+                                    <button onclick="adjustScore(1, -1)" class="minus-btn">-1</button>
+                                </div>
+                            </div>
+
+                            <!-- Bloc Centre (VS + Chronomètre) -->
+                            <div class="scoreboard-center-card">
+                                <div style="font-family: 'Syncopate', sans-serif; font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">VS</div>
+                                <div class="timer-manager">
+                                    <span id="scoreboard-timer">10:00</span>
+                                    <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px; width: 100%;">
+                                        <button onclick="toggleTimer()" id="btn-timer-trigger" style="background-color: var(--success); padding: 0.5rem 1rem; font-size: 0.85rem; flex: 1;">Démarrer</button>
+                                        <button onclick="resetTimer()" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem; flex: 1;">Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Équipe Droite (Extérieur) -->
+                            <div class="scoreboard-team-card">
+                                <h4 id="score-team2-name" style="font-size: 1.2rem; color: var(--primary); font-family: 'Syncopate', sans-serif;">Équipe B</h4>
+                                <div id="score-team2-val" style="font-size: 4.5rem; font-weight: bold; margin: 15px 0; font-family: monospace;">0</div>
+                                <div class="adjuster-btn-grid">
+                                    <button onclick="adjustScore(2, 1)">+1</button>
+                                    <button onclick="adjustScore(2, 2)">+2</button>
+                                    <button onclick="adjustScore(2, 3)">+3</button>
+                                    <button onclick="adjustScore(2, -1)" class="minus-btn">-1</button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <button class="btn-danger" onclick="stopAndSaveLiveMatch()" style="width: 100%; margin-top: 2rem; font-size: 1.1rem; padding: 1rem;">
+                            Terminer le Match & Enregistrer le Score Final
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Variables d'état local (se synchronisent en temps réel via Firestore)
+        let teams = [];
+        let matches = [];
+        let registrations = [];
+        let activeLiveMatch = null; 
+        let adminCredentials = null;
+
+        let timerInterval = null;
+        let isTimerRunning = false;
+
+        // ================= CONFIGURATION FIREBASE (initialisation sécurisée) =================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzQrgDAvCP6RsZGAlqdguuggX7F3Id7gY", 
+            authDomain: "solidarite-6a9c2.firebaseapp.com",
+            projectId: "solidarite-6a9c2",
+            storageBucket: "solidarite-6a9c2.firebasestorage.app",
+            messagingSenderId: "470220185969",
+            appId: "1:470220185969:web:eff3d041840c1446db16d0"
+        };
+
+        let db = null;
+        let firebaseReady = false;
+
+        function initFirebase() {
+            // Si les scripts Firebase (gstatic.com) n'ont pas pu se charger
+            // (bloqués par un aperçu sandbox, un bloqueur de pub, ou hors-ligne),
+            // on évite de faire planter tout le reste du script.
+            if (typeof firebase === 'undefined') {
+                console.error(
+                    "Firebase n'a pas pu se charger. Vérifiez que ce fichier est ouvert " +
+                    "dans un vrai navigateur avec accès à internet (pas dans un aperçu sandbox), " +
+                    "et que rien ne bloque www.gstatic.com."
+                );
+                return false;
+            }
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                return true;
+            } catch (err) {
+                console.error("Erreur d'initialisation Firebase :", err);
+                return false;
+            }
+        }
+
+        function showFirebaseErrorBanner() {
+            const wrapper = document.getElementById('admin-security-wrapper');
+            if (wrapper) {
+                wrapper.innerHTML = `
+                    <div class="card" style="max-width: 560px; margin: 3rem auto; border: 2px solid var(--danger); text-align: center;">
+                        <h3 style="color: var(--danger); margin-bottom: 1rem;">⚠️ Connexion au serveur impossible</h3>
+                        <p style="color: var(--text-muted);">
+                            Le service Firebase n'a pas pu se charger. Ouvrez ce fichier directement
+                            dans votre navigateur (et non dans un aperçu intégré), et vérifiez votre
+                            connexion internet.
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        // Démarrage de la page et écoutes en temps réel Firestore
+        window.onload = function() {
+            firebaseReady = initFirebase();
+            if (firebaseReady) {
+                initFirebaseListeners();
+                checkAndSeedDatabase();
+            } else {
+                showFirebaseErrorBanner();
+            }
+        };
+
+        // Enregistreurs d'écouteurs Firestore (Synchronisation instantanée bidirectionnelle)
+        function initFirebaseListeners() {
+            // Synchronisation de la clé d'identification admin
+            db.collection('config').doc('admin_credentials').onSnapshot((doc) => {
+                adminCredentials = doc.exists ? doc.data() : null;
+                if (document.getElementById('section-admin').classList.contains('active')) {
+                    renderAdminSecurityWrapper();
+                }
+            });
+
+            // Synchronisation en temps réel des équipes (Firestore)
+            db.collection('teams').onSnapshot((snapshot) => {
+                teams = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    teams.push(data.nomEquipe || doc.id);
+                });
+                refreshUI();
+                if (isAuthorized()) {
+                    renderAdminLists();
+                    populateAdminDropdowns();
+                }
+            });
+
+            // Synchronisation en temps réel des matchs (Firestore)
+            db.collection('matches').onSnapshot((snapshot) => {
+                matches = [];
+                snapshot.forEach(doc => {
+                    matches.push({ id: doc.id, ...doc.data() });
+                });
+                refreshUI();
+                if (isAuthorized()) {
+                    renderAdminLists();
+                    populateAdminDropdowns();
+                }
+            });
+
+            // Synchronisation en temps réel des demandes d'inscription (Firestore)
+            db.collection('registrations').onSnapshot((snapshot) => {
+                registrations = [];
+                snapshot.forEach(doc => {
+                    registrations.push({ id: doc.id, ...doc.data() });
+                });
+                if (isAuthorized()) {
+                    renderAdminLists();
+                }
+            });
+
+            // Synchronisation du match en direct (Scoreboard interactif sur l'index)
+            db.collection('live').doc('current').onSnapshot((doc) => {
+                activeLiveMatch = doc.exists ? doc.data() : null;
+                updatePublicLiveDisplay();
+                
+                // Si l'arbitre est connecté, on met également à jour son tableau d'administration
+                if (isAuthorized() && activeLiveMatch) {
+                    const score1Node = document.getElementById('score-team1-val');
+                    const score2Node = document.getElementById('score-team2-val');
+                    if (score1Node) score1Node.innerText = activeLiveMatch.score1;
+                    if (score2Node) score2Node.innerText = activeLiveMatch.score2;
+                    updateTimerDisplays();
+                }
+            });
+        }
+
+        // Injection automatique de données par défaut si Firestore est vide
+        async function checkAndSeedDatabase() {
+            try {
+                const credDoc = await db.collection('config').doc('admin_credentials').get();
+                if (!credDoc.exists) {
+                    await db.collection('config').doc('admin_credentials').set({
+                        usernameHash: "e9be3957ddf0a3adc056cd2acf316f70a7c6aeafdd35ff7230d712915a6a89d3", // "arbitre"
+                        passwordHash: "78176e2bf7f3f3bec3e03166dba6daeb2938081fb63e7705ff0b049a6328a01a"  // "Solidarite2026!"
+                    });
+                }
+
+                const teamsSnap = await db.collection('teams').get();
+                if (teamsSnap.empty) {
+                    const defaultTeams = ["Guerriers", "Éclairs", "Panthères", "Raptors"];
+                    for (const team of defaultTeams) {
+                        await db.collection('teams').doc(team).set({
+                            nomEquipe: team,
+                            responsable: "Responsable par défaut",
+                            telephone: "N/A",
+                            email: "contact@default.com",
+                            ville: "Cotonou",
+                            statutInscription: "validée",
+                            dateInscription: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+
+                const matchesSnap = await db.collection('matches').get();
+                if (matchesSnap.empty) {
+                    const defaultMatches = [
+                        { id: "1", team1: "Guerriers", team2: "Éclairs", score1: 78, score2: 72, played: true, date: "2026-07-18T14:00" },
+                        { id: "2", team1: "Panthères", team2: "Raptors", score1: 65, score2: 80, played: true, date: "2026-07-18T16:30" }
+                    ];
+                    for (const m of defaultMatches) {
+                        await db.collection('matches').doc(m.id).set({
+                            team1: m.team1,
+                            team2: m.team2,
+                            score1: m.score1,
+                            score2: m.score2,
+                            played: m.played,
+                            date: m.date
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn("L'initialisation automatique a échoué (vérifiez vos règles de sécurité Firestore) :", err);
+            }
+        }
+
+        // Système d'onglets Single Page
+        function switchTab(tabId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            document.getElementById(`section-${tabId}`).classList.add('active');
+            
+            const targetedLink = document.getElementById(`link-${tabId}`);
+            if (targetedLink) targetedLink.classList.add('active');
+            
+            document.getElementById('nav-links').classList.remove('mobile-open');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (tabId === 'admin') {
+                if (firebaseReady) {
+                    renderAdminSecurityWrapper();
+                } else {
+                    showFirebaseErrorBanner();
+                }
+            } else {
+                refreshUI();
+            }
+        }
+
+        function toggleMenu() {
+            document.getElementById('nav-links').classList.toggle('mobile-open');
+        }
+
+        // Formater les dates de manière élégante
+        function formatDate(dateTimeStr) {
+            if (!dateTimeStr) return "Date non planifiée";
+            const d = new Date(dateTimeStr);
+            if (isNaN(d.getTime())) return dateTimeStr;
+            return d.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).replace('à', '-');
+        }
+
+        // Rafraîchir toutes les interfaces publiques
+        function refreshUI() {
+            renderStandings();
+            renderSchedule();
+            renderHomeResults();
+        }
+
+        // CLASSEMENT OFFICIEL FIBA
+        function renderStandings() {
+            let stats = {};
+            teams.forEach(team => {
+                stats[team] = { name: team, played: 0, wins: 0, losses: 0, pm: 0, pe: 0, diff: 0, points: 0 };
+            });
+
+            matches.forEach(m => {
+                if (m.played && stats[m.team1] && stats[m.team2]) {
+                    stats[m.team1].played++;
+                    stats[m.team2].played++;
+                    stats[m.team1].pm += m.score1;
+                    stats[m.team1].pe += m.score2;
+                    stats[m.team2].pm += m.score2;
+                    stats[m.team2].pe += m.score1;
+
+                    if (m.score1 > m.score2) {
+                        stats[m.team1].wins++;
+                        stats[m.team1].points += 2;
+                        stats[m.team2].losses++;
+                        stats[m.team2].points += 1;
+                    } else if (m.score2 > m.score1) {
+                        stats[m.team2].wins++;
+                        stats[m.team2].points += 2;
+                        stats[m.team1].losses++;
+                        stats[m.team1].points += 1;
+                    }
+                }
+            });
+
+            let standingsArray = Object.values(stats);
+            standingsArray.sort((a, b) => {
+                if (b.points !== a.points) return b.points - a.points;
+                let diffA = a.pm - a.pe;
+                let diffB = b.pm - b.pe;
+                if (diffB !== diffA) return diffB - diffA;
+                return b.pm - a.pm;
+            });
+
+            const tbody = document.getElementById('standings-table-body');
+            if (tbody) {
+                tbody.innerHTML = '';
+                standingsArray.forEach((row, index) => {
+                    let diff = row.pm - row.pe;
+                    let diffClass = diff > 0 ? 'color: var(--success)' : (diff < 0 ? 'color: var(--danger)' : '');
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${index + 1}</strong></td>
+                            <td><strong>${row.name}</strong></td>
+                            <td style="text-align: center;">${row.played}</td>
+                            <td style="text-align: center; color: var(--success);">${row.wins}</td>
+                            <td style="text-align: center; color: var(--danger);">${row.losses}</td>
+                            <td style="text-align: center;">${row.pm}</td>
+                            <td style="text-align: center;">${row.pe}</td>
+                            <td style="text-align: center; ${diffClass}">${diff > 0 ? '+' : ''}${diff}</td>
+                            <td style="text-align: center; font-weight: bold; color: var(--primary);">${row.points}</td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        // AFFICHAGE DES MATCHS ET RÉSULTATS AVEC DATES
+        function renderSchedule() {
+            const grid = document.getElementById('full-schedule-grid');
+            const placeholder = document.getElementById('schedule-placeholder');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            if (matches.length === 0) {
+                placeholder.style.display = 'block';
+                return;
+            } else {
+                placeholder.style.display = 'none';
+            }
+
+            // Trier les matchs par date
+            let sortedMatches = [...matches].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            sortedMatches.forEach(m => {
+                let statusBadge = m.played 
+                    ? `<span style="color: var(--text-muted); font-size: 0.85rem; border: 1px solid var(--card-border); padding: 2px 6px; border-radius: 4px;">Terminé</span>` 
+                    : `<span style="color: var(--secondary); font-size: 0.85rem; border: 1px solid rgba(255,170,0,0.3); padding: 2px 6px; border-radius: 4px;">Programmé</span>`;
+                
+                let scoreText = m.played 
+                    ? `<div style="font-size: 2rem; font-weight: bold; margin: 10px 0;">${m.score1} - ${m.score2}</div>` 
+                    : `<div style="font-size: 1.2rem; color: var(--text-muted); margin: 15px 0; font-weight: bold;">VS</div>`;
+
+                grid.innerHTML += `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="font-size: 0.85rem; color: var(--secondary); font-weight: bold;">📅 ${formatDate(m.date)}</span>
+                            ${statusBadge}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; text-align: center;">
+                            <div style="flex: 1; font-weight: bold;">${m.team1}</div>
+                            <div style="flex: 1;">${scoreText}</div>
+                            <div style="flex: 1; font-weight: bold;">${m.team2}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderHomeResults() {
+            const grid = document.getElementById('recent-results-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            let playedMatches = matches.filter(m => m.played).slice(-3).reverse();
+
+            if (playedMatches.length === 0) {
+                grid.innerHTML = `<p style="color: var(--text-muted); grid-column: span 3; text-align: center;">Aucun match joué pour le moment.</p>`;
+                return;
+            }
+
+            playedMatches.forEach(m => {
+                grid.innerHTML += `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; text-align: center;">
+                            <div style="flex: 1; font-weight: bold; font-size: 1.1rem;">${m.team1}</div>
+                            <div style="flex: 1; font-size: 1.8rem; font-weight: bold; color: var(--primary);">${m.score1} - ${m.score2}</div>
+                            <div style="flex: 1; font-weight: bold; font-size: 1.1rem;">${m.team2}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // GESTION DES INSCRIPTIONS (CLIENT) + REDIRECTION WHATSAPP + FIRESTORE
+        function handleRegistration(event) {
+            event.preventDefault();
+            const name = document.getElementById('reg-team-name').value.trim();
+            const cat = document.getElementById('reg-category').value;
+            const captain = document.getElementById('reg-captain').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const phone = document.getElementById('reg-phone').value.trim();
+            const notes = document.getElementById('reg-notes').value.trim();
+
+            if (teams.includes(name)) {
+                alert("Ce nom d'équipe est déjà pris.");
+                return;
+            }
+
+            const regId = String(Date.now());
+            const newReg = {
+                id: regId,
+                teamName: name,
+                category: cat,
+                captain: captain,
+                email: email,
+                phone: phone,
+                notes: notes || "Aucune",
+                status: 'En attente',
+                dateInscription: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // 1. Enregistrement dans la base Firestore
+            db.collection('registrations').doc(regId).set(newReg).then(() => {
+                
+                // 2. Configuration du WhatsApp
+                const numeroWhatsApp = "2290195336665"; 
+
+                // Message formaté
+                const messageWhatsApp = `*🏀 NOUVELLE INSCRIPTION - SOLIDARITÉ 2026*
+
+*Nom de l'équipe :* ${newReg.teamName}
+*Catégorie :* ${newReg.category}
+*Capitaine / Responsable :* ${newReg.captain}
+*Courriel :* ${newReg.email}
+*Téléphone :* ${newReg.phone}
+*Notes :* ${newReg.notes}
+
+-------------------------------------------
+Bonjour, nous souhaitons payer les frais d'inscription du tournoi pour valider officiellement notre participation !`;
+
+                const messageEncode = encodeURIComponent(messageWhatsApp);
+                const urlWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${messageEncode}`;
+
+                // Réinitialisation du formulaire
+                document.getElementById('team-registration-form').reset();
+
+                // Notification & Redirection
+                alert(`Félicitations ! L'équipe "${name}" est pré-enregistrée sur la plateforme. Vous allez être redirigé vers WhatsApp pour finaliser le règlement.`);
+                window.open(urlWhatsApp, '_blank');
+            }).catch((error) => {
+                console.error("Erreur lors de l'enregistrement : ", error);
+                alert("Une erreur s'est produite lors de la sauvegarde. Veuillez réessayer.");
+            });
+        }
+
+
+        // ================= SECTION SÉCURISÉE & CRYPTAGE COMPATIBLE =================
+
+        // Utilitaire unique de hashage SHA-256
+        async function computeSHA256(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const buffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(buffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function isAuthorized() {
+            return sessionStorage.getItem('admin_authenticated') === 'true';
+        }
+
+        function renderAdminSecurityWrapper() {
+            const wrapper = document.getElementById('admin-security-wrapper');
+
+            if (!isAuthorized()) {
+                wrapper.innerHTML = ADMIN_LOGIN_HTML;
+            } else {
+                wrapper.innerHTML = ADMIN_DASHBOARD_HTML;
+                populateAdminDropdowns();
+                renderAdminLists();
+                
+                // RESTAURATION AUTOMATIQUE : Recharger l'état si un match en direct est détecté
+                if (activeLiveMatch) {
+                    const t1Node = document.getElementById('score-team1-name');
+                    const t2Node = document.getElementById('score-team2-name');
+                    const s1Node = document.getElementById('score-team1-val');
+                    const s2Node = document.getElementById('score-team2-val');
+
+                    if (t1Node) t1Node.innerText = activeLiveMatch.team1;
+                    if (t2Node) t2Node.innerText = activeLiveMatch.team2;
+                    if (s1Node) s1Node.innerText = activeLiveMatch.score1;
+                    if (s2Node) s2Node.innerText = activeLiveMatch.score2;
+
+                    updateTimerDisplays();
+                    const scoreboard = document.getElementById('scoreboard-panel');
+                    if (scoreboard) scoreboard.style.display = 'block';
+
+                    const select = document.getElementById('active-match-select');
+                    if (select) select.value = activeLiveMatch.id;
+                }
+            }
+        }
+
+        // Authentification hybride et robuste
+        async function handleAdminLogin() {
+            const usernameInput = document.getElementById('admin-username').value.trim();
+            const passwordInput = document.getElementById('admin-password').value.trim();
+            const errorElement = document.getElementById('auth-error');
+
+            const hashedUsername = await computeSHA256(usernameInput);
+            const hashedPassword = await computeSHA256(passwordInput);
+
+            // Identifiants locaux de secours
+            const localUserHash = "e9be3957ddf0a3adc056cd2acf316f70a7c6aeafdd35ff7230d712915a6a89d3"; // "arbitre"
+            const localPassHash = "78176e2bf7f3f3bec3e03166dba6daeb2938081fb63e7705ff0b049a6328a01a"; // "Solidarite2026!"
+
+            // Comparaison avec les données Firestore (ou repli local si Firestore n'a pas encore chargé)
+            const targetUserHash = adminCredentials?.usernameHash || localUserHash;
+            const targetPassHash = adminCredentials?.passwordHash || localPassHash;
+
+            if (hashedUsername === targetUserHash && hashedPassword === targetPassHash) {
+                sessionStorage.setItem('admin_authenticated', 'true');
+                renderAdminSecurityWrapper();
+            } else {
+                errorElement.innerText = "Identifiant ou mot de passe incorrect.";
+                errorElement.style.display = 'block';
+            }
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem('admin_authenticated');
+            renderAdminSecurityWrapper();
+        }
+
+
+        // ================= CONSOLE ADMINISTRATEUR (FONCTIONS VERROUILLÉES SUR FIRESTORE) =================
+
+        function blockIntruders() {
+            if (!isAuthorized()) {
+                alert("Accès refusé : Session expirée ou invalide.");
+                switchTab('home');
+                return true;
+            }
+            return false;
+        }
+
+        function approveRegistration(regId) {
+            if (blockIntruders()) return;
+
+            const reg = registrations.find(r => String(r.id) === String(regId));
+            if (!reg) return;
+
+            if (teams.includes(reg.teamName)) {
+                alert("Cette équipe est déjà présente dans la ligue.");
+                return;
+            }
+
+            // Transfert de l'équipe et suppression de sa demande
+            db.collection('teams').doc(reg.teamName).set({
+                nomEquipe: reg.teamName,
+                responsable: reg.captain,
+                telephone: reg.phone,
+                email: reg.email,
+                ville: "Cotonou",
+                statutInscription: "validée",
+                dateInscription: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                return db.collection('registrations').doc(String(regId)).delete();
+            }).then(() => {
+                alert(`L'équipe "${reg.teamName}" a été validée avec succès !`);
+            }).catch(err => {
+                console.error("Erreur d'approbation :", err);
+            });
+        }
+
+        function rejectRegistration(regId) {
+            if (blockIntruders()) return;
+
+            if (confirm("Rejeter cette demande d'inscription ?")) {
+                db.collection('registrations').doc(String(regId)).delete();
+            }
+        }
+
+        function addTeam() {
+            if (blockIntruders()) return;
+
+            const input = document.getElementById('new-team-name');
+            const name = input.value.trim();
+            if (!name) return alert("Nom invalide.");
+            if (teams.includes(name)) return alert("Cette équipe existe déjà.");
+
+            db.collection('teams').doc(name).set({
+                nomEquipe: name,
+                responsable: "Création Manuelle",
+                telephone: "N/A",
+                email: "contact@manuel.com",
+                ville: "Cotonou",
+                statutInscription: "validée",
+                dateInscription: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                input.value = '';
+            });
+        }
+
+        function deleteTeam(teamName) {
+            if (blockIntruders()) return;
+
+            if (confirm(`Supprimer l'équipe "${teamName}" ?`)) {
+                db.collection('teams').doc(teamName).delete();
+            }
+        }
+
+        // PLANIFIER UN MATCH SUR FIRESTORE
+        function scheduleMatch() {
+            if (blockIntruders()) return;
+
+            const t1 = document.getElementById('schedule-team1').value;
+            const t2 = document.getElementById('schedule-team2').value;
+            const dateVal = document.getElementById('schedule-date').value;
+
+            if (!t1 || !t2) return alert("Sélectionnez deux équipes.");
+            if (t1 === t2) return alert("Impossible d'opposer la même équipe.");
+            if (!dateVal) return alert("Veuillez choisir une date et une heure pour le match.");
+
+            const matchId = String(Date.now());
+            const newMatch = {
+                id: matchId,
+                team1: t1,
+                team2: t2,
+                score1: 0,
+                score2: 0,
+                played: false,
+                date: dateVal
+            };
+
+            db.collection('matches').doc(matchId).set(newMatch).then(() => {
+                alert("Match planifié avec succès !");
+            });
+        }
+
+        function deleteMatch(matchId) {
+            if (blockIntruders()) return;
+
+            if (confirm("Supprimer ce match ?")) {
+                db.collection('matches').doc(String(matchId)).delete();
+            }
+        }
+
+        // ARBITRAGE EN DIRECT ET SCOREBOARD FIRESTORE
+
+        function launchLiveMatch() {
+            if (blockIntruders()) return;
+
+            const select = document.getElementById('active-match-select');
+            const matchId = select.value;
+
+            if (!matchId) return alert("Sélectionnez un match.");
+
+            let matchRef = matches.find(m => String(m.id) === String(matchId));
+            if (!matchRef) return;
+
+            // Chargement de l'état du match en direct
+            activeLiveMatch = {
+                id: String(matchRef.id),
+                team1: matchRef.team1,
+                team2: matchRef.team2,
+                score1: 0,
+                score2: 0,
+                timeLeft: 600,
+                isRunning: false
+            };
+
+            document.getElementById('score-team1-name').innerText = activeLiveMatch.team1;
+            document.getElementById('score-team2-name').innerText = activeLiveMatch.team2;
+            document.getElementById('score-team1-val').innerText = activeLiveMatch.score1;
+            document.getElementById('score-team2-val').innerText = activeLiveMatch.score2;
+            updateTimerDisplays();
+            document.getElementById('scoreboard-panel').style.display = 'block';
+
+            db.collection('live').doc('current').set(activeLiveMatch);
+        }
+
+        function adjustScore(team, points) {
+            if (blockIntruders()) return;
+            if (!activeLiveMatch) return;
+
+            if (team === 1) {
+                activeLiveMatch.score1 = Math.max(0, activeLiveMatch.score1 + points);
+                db.collection('live').doc('current').update({ score1: activeLiveMatch.score1 });
+            } else {
+                activeLiveMatch.score2 = Math.max(0, activeLiveMatch.score2 + points);
+                db.collection('live').doc('current').update({ score2: activeLiveMatch.score2 });
+            }
+        }
+
+        function toggleTimer() {
+            if (blockIntruders()) return;
+            if (!activeLiveMatch) return;
+
+            const btn = document.getElementById('btn-timer-trigger');
+
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                btn.innerText = "Démarrer";
+                btn.style.backgroundColor = "var(--success)";
+                db.collection('live').doc('current').update({ isRunning: false });
+            } else {
+                isTimerRunning = true;
+                btn.innerText = "Pause";
+                btn.style.backgroundColor = "var(--danger)";
+                db.collection('live').doc('current').update({ isRunning: true });
+
+                timerInterval = setInterval(() => {
+                    if (activeLiveMatch && activeLiveMatch.timeLeft > 0) {
+                        activeLiveMatch.timeLeft--;
+                        updateTimerDisplays();
+                        db.collection('live').doc('current').update({ timeLeft: activeLiveMatch.timeLeft });
+                    } else {
+                        clearInterval(timerInterval);
+                        isTimerRunning = false;
+                        btn.innerText = "Démarrer";
+                        btn.style.backgroundColor = "var(--success)";
+                        db.collection('live').doc('current').update({ isRunning: false });
+                        alert("Fin du temps réglementaire !");
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            if (blockIntruders()) return;
+            if (!activeLiveMatch) return;
+            
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            activeLiveMatch.timeLeft = 600;
+            
+            document.getElementById('btn-timer-trigger').innerText = "Démarrer";
+            document.getElementById('btn-timer-trigger').style.backgroundColor = "var(--success)";
+            
+            db.collection('live').doc('current').update({ timeLeft: 600, isRunning: false });
+            updateTimerDisplays();
+        }
+
+        function updateTimerDisplays() {
+            if (!activeLiveMatch) return;
+            const min = Math.floor(activeLiveMatch.timeLeft / 60);
+            const sec = activeLiveMatch.timeLeft % 60;
+            const text = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            
+            const scoreTimer = document.getElementById('scoreboard-timer');
+            const publicTimer = document.getElementById('live-display-timer');
+
+            if (scoreTimer) scoreTimer.innerText = text;
+            if (publicTimer) publicTimer.innerText = text;
+        }
+
+        function updatePublicLiveDisplay() {
+            if (activeLiveMatch) {
+                const placeholder = document.getElementById('live-match-placeholder');
+                const display = document.getElementById('live-match-display');
+                if (placeholder) placeholder.style.display = 'none';
+                if (display) {
+                    display.style.display = 'block';
+                    document.getElementById('live-display-team1').innerText = activeLiveMatch.team1;
+                    document.getElementById('live-display-team2').innerText = activeLiveMatch.team2;
+                    document.getElementById('live-display-score1').innerText = activeLiveMatch.score1;
+                    document.getElementById('live-display-score2').innerText = activeLiveMatch.score2;
+                    
+                    const min = Math.floor(activeLiveMatch.timeLeft / 60);
+                    const sec = activeLiveMatch.timeLeft % 60;
+                    document.getElementById('live-display-timer').innerText = 
+                        `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+                }
+            } else {
+                const liveDisplay = document.getElementById('live-match-display');
+                const placeholder = document.getElementById('live-match-placeholder');
+                if (liveDisplay) liveDisplay.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'block';
+            }
+        }
+
+        function stopAndSaveLiveMatch() {
+            if (blockIntruders()) return;
+            if (!activeLiveMatch) return;
+
+            if (activeLiveMatch.score1 === activeLiveMatch.score2) {
+                alert("Un match de basket-ball ne peut pas se terminer par une égalité ! Jouez des prolongations avant d'enregistrer.");
+                return;
+            }
+
+            if (confirm(`Confirmer et enregistrer le score final : ${activeLiveMatch.score1} - ${activeLiveMatch.score2} ?`)) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+
+                const matchId = String(activeLiveMatch.id);
+                db.collection('matches').doc(matchId).update({
+                    score1: activeLiveMatch.score1,
+                    score2: activeLiveMatch.score2,
+                    played: true
+                }).then(() => {
+                    // Suppression de l'affichage du direct et archivage
+                    return db.collection('live').doc('current').delete();
+                }).then(() => {
+                    const scoreboard = document.getElementById('scoreboard-panel');
+                    if (scoreboard) scoreboard.style.display = 'none';
+                    alert("Le match est officiellement terminé ! Le classement est mis à jour.");
+                    renderAdminSecurityWrapper();
+                }).catch(err => {
+                    console.error("Erreur lors de la sauvegarde du match :", err);
+                });
+            }
+        }
+
+
+        // GÉNÉRATEURS DE COMPOSANTS DYNAMIQUES DE L'ADMIN
+        function populateAdminDropdowns() {
+            const s1 = document.getElementById('schedule-team1');
+            const s2 = document.getElementById('schedule-team2');
+            const liveSelect = document.getElementById('active-match-select');
+
+            if (!s1 || !s2 || !liveSelect) return;
+
+            s1.innerHTML = '';
+            s2.innerHTML = '';
+            liveSelect.innerHTML = '';
+
+            teams.forEach(team => {
+                s1.innerHTML += `<option value="${team}">${team}</option>`;
+                s2.innerHTML += `<option value="${team}">${team}</option>`;
+            });
+
+            let unplayedMatches = matches.filter(m => !m.played);
+            if (unplayedMatches.length === 0) {
+                liveSelect.innerHTML = `<option value="">-- Aucun match à arbitrer --</option>`;
+                document.getElementById('btn-launch-live').disabled = true;
+            } else {
+                document.getElementById('btn-launch-live').disabled = false;
+                unplayedMatches.forEach(m => {
+                    liveSelect.innerHTML += `<option value="${m.id}">#${m.id} : ${m.team1} VS ${m.team2}</option>`;
+                });
+            }
+        }
+
+        // Affichage des éléments enregistrés dans la console de l'arbitre
+        function renderAdminLists() {
+            const tList = document.getElementById('admin-teams-list');
+            const mList = document.getElementById('admin-scheduled-list');
+            const rList = document.getElementById('admin-registrations-list');
+
+            if (!tList || !mList || !rList) return;
+
+            tList.innerHTML = '';
+            mList.innerHTML = '';
+            rList.innerHTML = '';
+
+            // Équipes
+            teams.forEach(team => {
+                tList.innerHTML += `
+                    <li>
+                        <span>${team}</span>
+                        <button class="btn-danger" style="padding: 2px 8px; font-size: 0.8rem;" onclick="deleteTeam('${team}')">Supprimer</button>
+                    </li>
+                `;
+            });
+
+            // Matchs programmés avec date & heure
+            matches.forEach(m => {
+                let info = m.played ? `${m.score1} - ${m.score2} (Fini)` : 'Non joué';
+                mList.innerHTML += `
+                    <li>
+                        <div>
+                            <strong>${m.team1} VS ${m.team2}</strong> <br>
+                            <span style="font-size: 0.8rem; color: var(--secondary);">📅 ${formatDate(m.date)}</span> <br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${info}</span>
+                        </div>
+                        <button class="btn-danger" style="padding: 2px 8px; font-size: 0.8rem;" onclick="deleteMatch('${m.id}')">X</button>
+                    </li>
+                `;
+            });
+
+            // Inscriptions en attente
+            if (registrations.length === 0) {
+                rList.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Aucune demande.</p>`;
+            } else {
+                registrations.forEach(r => {
+                    rList.innerHTML += `
+                        <li style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                            <div>
+                                <strong style="color: var(--secondary);">${r.teamName}</strong> (${r.category})<br>
+                                <span style="font-size: 0.8rem; color: var(--text-light);">Contact: ${r.captain} (${r.phone})</span>
+                            </div>
+                            <div style="display: flex; gap: 5px; width: 100%;">
+                                <button onclick="approveRegistration('${r.id}')" style="flex: 1; padding: 4px; font-size: 0.8rem; background-color: var(--success);">Approuver</button>
+                                <button onclick="rejectRegistration('${r.id}')" class="btn-danger" style="flex: 1; padding: 4px; font-size: 0.8rem;">Rejeter</button>
+                            </div>
+                        </li>
+                    `;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
