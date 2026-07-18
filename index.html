@@ -1387,7 +1387,10 @@
             });
         }
 
-        // Injection automatique de données par défaut si Firestore est vide
+        // Initialisation minimale de Firestore : ne crée QUE les identifiants admin
+        // par défaut si aucun n'existe encore. Ne génère plus aucune équipe ni
+        // aucun match fictif — toutes les données affichées viennent uniquement
+        // des vraies inscriptions/actions de l'arbitre.
         async function checkAndSeedDatabase() {
             try {
                 const credDoc = await db.collection('config').doc('admin_credentials').get();
@@ -1397,40 +1400,7 @@
                         passwordHash: "78176e2bf7f3f3bec3e03166dba6daeb2938081fb63e7705ff0b049a6328a01a"  // "Solidarite2026!"
                     });
                 }
-
-                const teamsSnap = await db.collection('teams').get();
-                if (teamsSnap.empty) {
-                    const defaultTeams = ["Guerriers", "Éclairs", "Panthères", "Raptors"];
-                    for (const team of defaultTeams) {
-                        await db.collection('teams').doc(team).set({
-                            nomEquipe: team,
-                            responsable: "Responsable par défaut",
-                            telephone: "N/A",
-                            email: "contact@default.com",
-                            ville: "Cotonou",
-                            statutInscription: "validée",
-                            dateInscription: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    }
-                }
-
-                const matchesSnap = await db.collection('matches').get();
-                if (matchesSnap.empty) {
-                    const defaultMatches = [
-                        { id: "1", team1: "Guerriers", team2: "Éclairs", score1: 78, score2: 72, played: true, date: "2026-07-18T14:00" },
-                        { id: "2", team1: "Panthères", team2: "Raptors", score1: 65, score2: 80, played: true, date: "2026-07-18T16:30" }
-                    ];
-                    for (const m of defaultMatches) {
-                        await db.collection('matches').doc(m.id).set({
-                            team1: m.team1,
-                            team2: m.team2,
-                            score1: m.score1,
-                            score2: m.score2,
-                            played: m.played,
-                            date: m.date
-                        });
-                    }
-                }
+                // Aucune équipe ni aucun match de démonstration n'est plus créé automatiquement.
             } catch (err) {
                 console.warn("L'initialisation automatique a échoué (vérifiez vos règles de sécurité Firestore) :", err);
             }
