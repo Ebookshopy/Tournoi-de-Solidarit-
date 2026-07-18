@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
+      <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="google-site-verification" content="ignTjxzcOuNnn8RzrIGyEfCKuuNpNScYlUKzG0PI5bg" />
-
-    <title>Tournoi Solidarité </title>
-
+    <title>Tournoi Solidarité</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Syncopate:wght@700&display=swap" rel="stylesheet">
-        
+    
     <!-- SDKs Firebase (Version Compatibilité CDN — Firestore branché) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
     <style>
         :root {
@@ -1133,8 +1132,11 @@
                             <textarea id="news-contenu-input" rows="3" placeholder="Détails de l'actualité..."></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="news-image-input">URL de l'image (optionnel)</label>
-                            <input type="text" id="news-image-input" placeholder="https://...">
+                            <label for="news-image-input">Photo (optionnel)</label>
+                            <input type="file" id="news-image-input" accept="image/*" onchange="previewNewsImage(event)">
+                            <div id="news-image-preview" style="margin-top: 10px; display: none;">
+                                <img id="news-image-preview-img" src="" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border);">
+                            </div>
                         </div>
                         <button onclick="addNews()" style="width: 100%;">Publier</button>
 
@@ -1256,6 +1258,7 @@
         };
 
         let db = null;
+        let storage = null;
         let firebaseReady = false;
 
         function initFirebase() {
@@ -1273,6 +1276,7 @@
             try {
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
+                storage = firebase.storage();
                 return true;
             } catch (err) {
                 console.error("Erreur d'initialisation Firebase :", err);
@@ -1889,29 +1893,90 @@ Bonjour, nous souhaitons payer les frais d'inscription du tournoi pour valider o
             }
         }
 
+        // Aperçu instantané de la photo choisie
+        function previewNewsImage(event) {
+            const file = event.target.files && event.target.files[0];
+            const previewWrap = document.getElementById('news-image-preview');
+            const previewImg = document.getElementById('news-image-preview-img');
+            if (!file || !previewWrap || !previewImg) {
+                if (previewWrap) previewWrap.style.display = 'none';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewWrap.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Redimensionne et compresse une image côté navigateur avant de l'enregistrer
+        // (évite de dépasser la limite de 1 Mo par document Firestore, et reste gratuit
+        // sans avoir besoin d'activer Firebase Storage).
+        function compressImageFile(file, maxWidth = 1000, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error("Impossible de lire le fichier."));
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error("Fichier image invalide."));
+                    img.onload = () => {
+                        const scale = Math.min(1, maxWidth / img.width);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.round(img.width * scale);
+                        canvas.height = Math.round(img.height * scale);
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         // GESTION DES ACTUALITÉS (ADMIN)
-        function addNews() {
+        async function addNews() {
             if (blockIntruders()) return;
 
             const titreInput = document.getElementById('news-titre-input');
             const contenuInput = document.getElementById('news-contenu-input');
             const imageInput = document.getElementById('news-image-input');
+            const previewWrap = document.getElementById('news-image-preview');
 
             const titre = titreInput.value.trim();
             const contenu = contenuInput.value.trim();
-            const image = imageInput.value.trim();
+            const file = imageInput.files && imageInput.files[0];
 
             if (!titre || !contenu) return alert("Le titre et le contenu sont obligatoires.");
+
+            let imageDataUrl = "";
+            if (file) {
+                try {
+                    imageDataUrl = await compressImageFile(file);
+                    // Garde-fou : si malgré la compression c'est encore trop lourd
+                    // pour un document Firestore (limite ~1 Mo), on prévient l'utilisateur.
+                    if (imageDataUrl.length > 900000) {
+                        alert("Cette photo est trop volumineuse même après compression. Essayez une photo plus petite ou moins détaillée.");
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Erreur de compression de l'image :", err);
+                    alert("Impossible de traiter cette photo. Réessayez avec une autre image.");
+                    return;
+                }
+            }
 
             db.collection('news').add({
                 titre: titre,
                 contenu: contenu,
-                image: image || "",
+                image: imageDataUrl,
                 datePublication: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 titreInput.value = '';
                 contenuInput.value = '';
                 imageInput.value = '';
+                if (previewWrap) previewWrap.style.display = 'none';
                 alert("Actualité publiée avec succès !");
             }).catch(err => {
                 console.error("Erreur lors de la publication de l'actualité :", err);
