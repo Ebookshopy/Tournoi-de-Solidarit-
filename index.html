@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <meta name="google-site-verification" content="ignTjxzcOuNnn8RzrIGyEfCKuuNpNScYlUKzG0PI5bg" />
-<title>Tournoi de Solidarité - Basketball Cotonou | Inscriptions & Résultats</title>
+<title>Tournoi Solidarité - Basketball Cotonou | Inscriptions & Résultats</title>
 <meta name="description" content="Tournoi Solidarité — le rendez-vous annuel du basketball solidaire à Cotonou. Inscriptions d'équipes, scores en direct, classement et calendrier des matchs.">
 
 <meta property="og:title" content="Tournoi Solidarité">
-<meta name="description" content="Tournoi Solidarité — le grand rendez-vous annuel de basket et basketball solidaire à Cotonou, Bénin. Formez votre équipe masculine ou féminine, suivez les scores en direct, consultez le classement officiel FIBA et le calendrier complet des matchs. Une compétition sportive engagée au service de l'insertion des jeunes par le sport, portée par la passion du basketball de rue.">
-
+<meta property="og:description" content="Le tournoi de basketball solidaire annuel à Cotonou — compétition, passion et spectacle. Formez votre équipe et venez défendre vos couleurs !">
 <meta property="og:image" content="https://tournoi.solidarite.wuaze.com/images01.jpg">
 <link rel="icon" type="image/png" href="https://tournoi.solidarite.wuaze.com/favicon.png">
 <link rel="icon" type="image/x-icon" href="https://tournoi.solidarite.wuaze.com/favicon.ico">
@@ -637,6 +636,40 @@
             padding: 1.5rem;
         }
 
+        .score-input-group {
+            margin: 1.2rem 0;
+        }
+
+        .score-input {
+            width: 100%;
+            font-size: 2.2rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 0.8rem;
+            background-color: #000;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            color: #fff;
+            font-family: monospace;
+            margin-bottom: 10px;
+        }
+
+        .score-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .btn-validate-score {
+            width: 100%;
+            background-color: var(--success);
+            font-size: 1rem;
+        }
+
+        .btn-validate-score:hover {
+            background-color: #00a352;
+        }
+
         .adjuster-btn-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -1206,15 +1239,9 @@
                             <div class="scoreboard-team-card">
                                 <h4 id="score-team1-name" style="font-size: 1.2rem; color: var(--primary); font-family: 'Syncopate', sans-serif;">Équipe A</h4>
                                 <div id="score-team1-val" style="font-size: 4.5rem; font-weight: bold; margin: 15px 0; font-family: monospace;">0</div>
-                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                    <input type="number" id="score-team1-input" min="0" placeholder="Score exact" style="text-align: center;">
-                                    <button onclick="setExactScore(1)" class="btn-secondary" style="white-space: nowrap;">Valider</button>
-                                </div>
-                                <div class="adjuster-btn-grid">
-                                    <button onclick="adjustScore(1, 1)">+1</button>
-                                    <button onclick="adjustScore(1, 2)">+2</button>
-                                    <button onclick="adjustScore(1, 3)">+3</button>
-                                    <button onclick="adjustScore(1, -1)" class="minus-btn">-1</button>
+                                <div class="score-input-group">
+                                    <input type="number" id="score-team1-input" min="0" placeholder="0" class="score-input">
+                                    <button onclick="setExactScore(1)" class="btn-validate-score">Valider le score</button>
                                 </div>
                             </div>
 
@@ -1234,15 +1261,9 @@
                             <div class="scoreboard-team-card">
                                 <h4 id="score-team2-name" style="font-size: 1.2rem; color: var(--primary); font-family: 'Syncopate', sans-serif;">Équipe B</h4>
                                 <div id="score-team2-val" style="font-size: 4.5rem; font-weight: bold; margin: 15px 0; font-family: monospace;">0</div>
-                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                    <input type="number" id="score-team2-input" min="0" placeholder="Score exact" style="text-align: center;">
-                                    <button onclick="setExactScore(2)" class="btn-secondary" style="white-space: nowrap;">Valider</button>
-                                </div>
-                                <div class="adjuster-btn-grid">
-                                    <button onclick="adjustScore(2, 1)">+1</button>
-                                    <button onclick="adjustScore(2, 2)">+2</button>
-                                    <button onclick="adjustScore(2, 3)">+3</button>
-                                    <button onclick="adjustScore(2, -1)" class="minus-btn">-1</button>
+                                <div class="score-input-group">
+                                    <input type="number" id="score-team2-input" min="0" placeholder="0" class="score-input">
+                                    <button onclick="setExactScore(2)" class="btn-validate-score">Valider le score</button>
                                 </div>
                             </div>
 
@@ -2184,6 +2205,11 @@ Bonjour, nous souhaitons payer les frais d'inscription du tournoi pour valider o
             if (blockIntruders()) return;
             if (!activeLiveMatch) return;
 
+            if (!firebaseReady || !db) {
+                alert("Impossible d'enregistrer : la connexion au serveur (Firebase) n'est pas disponible. Vérifiez votre connexion internet et que ce site est bien ouvert en ligne (pas en local/preview).");
+                return;
+            }
+
             if (activeLiveMatch.score1 === activeLiveMatch.score2) {
                 alert("Un match de basket-ball ne peut pas se terminer par une égalité ! Jouez des prolongations avant d'enregistrer.");
                 return;
@@ -2202,12 +2228,21 @@ Bonjour, nous souhaitons payer les frais d'inscription du tournoi pour valider o
                     // Suppression de l'affichage du direct et archivage
                     return db.collection('live').doc('current').delete();
                 }).then(() => {
+                    // Important : on force la remise à zéro locale AVANT de re-render,
+                    // car l'écouteur Firestore (onSnapshot) peut mettre un peu de temps
+                    // à confirmer la suppression. Sans ça, le panneau se rouvrait tout seul.
+                    activeLiveMatch = null;
+                    clearInterval(timerInterval);
+                    isTimerRunning = false;
+
                     const scoreboard = document.getElementById('scoreboard-panel');
                     if (scoreboard) scoreboard.style.display = 'none';
+
                     alert("Le match est officiellement terminé ! Le classement est mis à jour.");
                     renderAdminSecurityWrapper();
                 }).catch(err => {
                     console.error("Erreur lors de la sauvegarde du match :", err);
+                    alert("Échec de l'enregistrement du match : " + (err && err.message ? err.message : "erreur inconnue") + "\n\nVérifiez votre connexion internet et réessayez.");
                 });
             }
         }
