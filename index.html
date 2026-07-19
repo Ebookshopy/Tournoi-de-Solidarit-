@@ -5,13 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <meta name="google-site-verification" content="ignTjxzcOuNnn8RzrIGyEfCKuuNpNScYlUKzG0PI5bg" />
-<title>Tournoi Solidarité - Basketball Cotonou | Inscriptions & Résultats</title>
+<title>Tournoi de Solidarité - Basketball Cotonou | Inscriptions & Résultats</title>
 <meta name="description" content="Tournoi Solidarité — le rendez-vous annuel du basketball solidaire à Cotonou. Inscriptions d'équipes, scores en direct, classement et calendrier des matchs.">
 
 <meta property="og:title" content="Tournoi Solidarité">
 <meta property="og:description" content="Le tournoi de basketball solidaire annuel à Cotonou — compétition, passion et spectacle. Formez votre équipe et venez défendre vos couleurs !">
 <meta property="og:image" content="https://tournoi.solidarite.wuaze.com/images01.jpg">
-      <link rel="icon" type="image/png" href="https://tournoi.solidarite.wuaze.com/favicon.png">
 <link rel="icon" type="image/png" href="https://tournoi.solidarite.wuaze.com/favicon.png">
 <link rel="icon" type="image/x-icon" href="https://tournoi.solidarite.wuaze.com/favicon.ico">
 
@@ -823,8 +822,8 @@
             </div>
             <div class="nav-links" id="nav-links">
                 <a onclick="switchTab('home')" class="active" id="link-home">Accueil</a>
-                <a onclick="switchTab('register')" id="link-register">S'inscrire</a>
-                <a onclick="switchTab('schedule')" id="link-schedule">Matchs</a>
+                <a onclick="switchTab('register')" id="link-register">S'inscrire au Basket</a>
+                <a onclick="switchTab('schedule')" id="link-schedule">Matchs de Basketball</a>
                 <a onclick="switchTab('standings')" id="link-standings">Classement</a>
                 <a onclick="switchTab('admin')" id="link-admin">Espace Arbitre</a>
             </div>
@@ -835,10 +834,10 @@
     <div class="hero">
         <span class="edition-badge">★ Nouvelle Édition ★</span>
         <h1>TOURNOI SOLIDARITÉ <span>2026</span></h1>
-        <p>Le basketball au service du partage. Rejoignez l'élite sportive et soutenez un projet d'insertion par le sport.</p>
+        <p>Le tournoi de basketball et basket solidaire de référence à Cotonou, Bénin. Rejoignez la compétition sportive et soutenez un projet d'insertion par le sport.</p>
         <div class="hero-buttons">
-            <button onclick="switchTab('register')">S'inscrire Maintenant</button>
-            <button class="btn-secondary" onclick="switchTab('schedule')">Voir les Matchs</button>
+            <button onclick="switchTab('register')">Inscrire mon équipe de Basket</button>
+            <button class="btn-secondary" onclick="switchTab('schedule')">Voir les Matchs de Basketball</button>
         </div>
     </div>
 
@@ -1206,6 +1205,10 @@
                             <div class="scoreboard-team-card">
                                 <h4 id="score-team1-name" style="font-size: 1.2rem; color: var(--primary); font-family: 'Syncopate', sans-serif;">Équipe A</h4>
                                 <div id="score-team1-val" style="font-size: 4.5rem; font-weight: bold; margin: 15px 0; font-family: monospace;">0</div>
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <input type="number" id="score-team1-input" min="0" placeholder="Score exact" style="text-align: center;">
+                                    <button onclick="setExactScore(1)" class="btn-secondary" style="white-space: nowrap;">Valider</button>
+                                </div>
                                 <div class="adjuster-btn-grid">
                                     <button onclick="adjustScore(1, 1)">+1</button>
                                     <button onclick="adjustScore(1, 2)">+2</button>
@@ -1230,6 +1233,10 @@
                             <div class="scoreboard-team-card">
                                 <h4 id="score-team2-name" style="font-size: 1.2rem; color: var(--primary); font-family: 'Syncopate', sans-serif;">Équipe B</h4>
                                 <div id="score-team2-val" style="font-size: 4.5rem; font-weight: bold; margin: 15px 0; font-family: monospace;">0</div>
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <input type="number" id="score-team2-input" min="0" placeholder="Score exact" style="text-align: center;">
+                                    <button onclick="setExactScore(2)" class="btn-secondary" style="white-space: nowrap;">Valider</button>
+                                </div>
                                 <div class="adjuster-btn-grid">
                                     <button onclick="adjustScore(2, 1)">+1</button>
                                     <button onclick="adjustScore(2, 2)">+2</button>
@@ -2050,11 +2057,38 @@ Bonjour, nous souhaitons payer les frais d'inscription du tournoi pour valider o
 
             if (team === 1) {
                 activeLiveMatch.score1 = Math.max(0, activeLiveMatch.score1 + points);
+                document.getElementById('score-team1-val').innerText = activeLiveMatch.score1;
                 db.collection('live').doc('current').update({ score1: activeLiveMatch.score1 });
             } else {
                 activeLiveMatch.score2 = Math.max(0, activeLiveMatch.score2 + points);
+                document.getElementById('score-team2-val').innerText = activeLiveMatch.score2;
                 db.collection('live').doc('current').update({ score2: activeLiveMatch.score2 });
             }
+        }
+
+        function setExactScore(team) {
+            if (blockIntruders()) return;
+            if (!activeLiveMatch) return;
+
+            const input = document.getElementById(`score-team${team}-input`);
+            const value = parseInt(input.value, 10);
+
+            if (isNaN(value) || value < 0) {
+                alert("Veuillez entrer un score valide (nombre positif).");
+                return;
+            }
+
+            if (team === 1) {
+                activeLiveMatch.score1 = value;
+                document.getElementById('score-team1-val').innerText = value;
+                db.collection('live').doc('current').update({ score1: value });
+            } else {
+                activeLiveMatch.score2 = value;
+                document.getElementById('score-team2-val').innerText = value;
+                db.collection('live').doc('current').update({ score2: value });
+            }
+
+            input.value = '';
         }
 
         function toggleTimer() {
