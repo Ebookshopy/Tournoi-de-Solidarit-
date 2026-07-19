@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tournoi.solidarite.wuaze.com/sitemap.xml
